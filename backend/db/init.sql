@@ -4,7 +4,9 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     firebase_uid VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL
+    email VARCHAR(255) UNIQUE NOT NULL,
+    stripe_customer_id VARCHAR(255) UNIQUE,
+    subscription_status VARCHAR(50)
 );
 
 -- Clients Table
