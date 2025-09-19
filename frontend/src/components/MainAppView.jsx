@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import HomeIcon from './HomeIcon';
 import BriefcaseIcon from './BriefcaseIcon';
 import UsersIcon from './UsersIcon';
@@ -21,54 +21,76 @@ import ReportingView from './ReportingView';
 import ExpensesView from './ExpensesView';
 import TeamView from './TeamView';
 import SettingsView from './SettingsView';
-import { initialClients, initialTimeEntries, initialInvoices, initialExpenses, initialUserProfile, initialTeamMembers, initialRecurringInvoices, initialTaxSettings, initialCurrencySettings } from '../mockData';
+import { useAuth } from '../contexts/AuthContext';
 
 const MainAppView = ({ user, onLogout }) => {
+    const { idToken } = useAuth();
     const [activeView, setActiveView] = useState('dashboard');
     const [viewingProject, setViewingProject] = useState(null);
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [clients, setClients] = useState(initialClients);
+
+    const [clients, setClients] = useState([]);
     const [projects, setProjects] = useState([]);
-    const [isLoadingProjects, setIsLoadingProjects] = useState(true);
-    useEffect(() => {
-        console.log("Fetching projects...");
-        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxfSwiaWF0IjoxNzU4MjY5MjU5LCJleHAiOjE3NTgyNzI4NTl9.QUlLxnnnog0BtIOjk88IyMgj_BWTYtHby1OvrcBDxMQ'; // Temporary token for development
-        fetch('/api/projects', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        })
-            .then(res => {
-                if (!res.ok) {
-                    // Log the error response for more details
-                    return res.json().then(errorData => {
-                        throw new Error(`API Error: ${res.status} ${res.statusText} - ${JSON.stringify(errorData)}`);
-                    });
-                }
-                return res.json();
-            })
-            .then(data => {
-                console.log("Projects data:", data);
-                setProjects(data);
-            })
-            .catch(err => console.error("Failed to fetch projects:", err))
-            .finally(() => setIsLoadingProjects(false));
-    }, []);
-    const [timeEntries, setTimeEntries] = useState(initialTimeEntries);
-    const [invoices, setInvoices] = useState(initialInvoices);
-    const [expenses, setExpenses] = useState(initialExpenses);
-    const [userProfile, setUserProfile] = useState(initialUserProfile);
+    const [timeEntries, setTimeEntries] = useState([]);
+    const [invoices, setInvoices] = useState([]);
+    const [expenses, setExpenses] = useState([]);
+    const [userProfile, setUserProfile] = useState({});
     const [teamMembers, setTeamMembers] = useState([]);
-    const [recurringInvoices, setRecurringInvoices] = useState(initialRecurringInvoices);
-    const [taxSettings, setTaxSettings] = useState(initialTaxSettings);
-    const [currencySettings, setCurrencySettings] = useState(initialCurrencySettings);
+    const [recurringInvoices, setRecurringInvoices] = useState([]);
+    const [taxSettings, setTaxSettings] = useState({});
+    const [currencySettings, setCurrencySettings] = useState({});
+
+    const [isLoading, setIsLoading] = useState(true);
     const [pdfLibrariesLoaded, setPdfLibrariesLoaded] = useState(false);
+
+    const fetchData = useCallback(async (endpoint, setter) => {
+        if (!idToken) return;
+        try {
+            const response = await fetch(`/api/${endpoint}`, {
+                headers: { 'Authorization': `Bearer ${idToken}` }
+            });
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status} ${response.statusText}`);
+            }
+            const data = await response.json();
+            setter(data);
+        } catch (error) {
+            console.error(`Failed to fetch ${endpoint}:`, error);
+        }
+    }, [idToken]);
+
+    useEffect(() => {
+        const fetchAllData = async () => {
+            setIsLoading(true);
+            await Promise.all([
+                fetchData('projects', setProjects),
+                fetchData('clients', setClients),
+                fetchData('time-entries', setTimeEntries),
+                fetchData('invoices', setInvoices),
+                fetchData('expenses', setExpenses),
+                fetchData('profile', setUserProfile),
+                fetchData('team', setTeamMembers),
+                fetchData('recurring-invoices', setRecurringInvoices),
+                fetchData('tax-settings', setTaxSettings),
+                fetchData('currency-settings', setCurrencySettings),
+            ]);
+            setIsLoading(false);
+        };
+        fetchAllData();
+    }, [fetchData]);
 
     useEffect(() => {
         // Initialize team members with the current user as Admin
-        setTeamMembers(initialTeamMembers(user));
-    }, [user]);
+        if (user && teamMembers.length > 0) {
+            const userInTeam = teamMembers.find(member => member.uid === user.uid);
+            if (!userInTeam) {
+                setTeamMembers(prev => [...prev, { ...user, role: 'Admin' }]);
+            }
+        } else if (user) {
+            setTeamMembers([{ ...user, role: 'Admin' }]);
+        }
+    }, [user, teamMembers]);
 
     useEffect(() => {
         if (viewingProject) {
@@ -156,13 +178,17 @@ const MainAppView = ({ user, onLogout }) => {
     );
 
     const renderView = () => {
+        if (isLoading) {
+            return <div>Loading...</div>;
+        }
+
         if (activeView === 'project-detail' && viewingProject) {
             return <ProjectDetailView project={viewingProject} setProjects={setProjects} teamMembers={teamMembers} onBack={handleBackToProjects} />;
         }
 
         switch (activeView) {
             case 'dashboard': return <DashboardView projects={projects} clients={clients} timeEntries={timeEntries} invoices={invoices} taxSettings={taxSettings} currencySettings={currencySettings} />;
-            case 'projects': return <ProjectsView projects={projects} setProjects={setProjects} clients={clients} teamMembers={teamMembers} currencySettings={currencySettings} setViewingProject={handleSetViewingProject} isLoading={isLoadingProjects} />;
+            case 'projects': return <ProjectsView projects={projects} setProjects={setProjects} clients={clients} teamMembers={teamMembers} currencySettings={currencySettings} setViewingProject={handleSetViewingProject} isLoading={isLoading} />;
             case 'clients': return <ClientsView clients={clients} setClients={setClients} />;
             case 'invoices': return <InvoicesView projects={projects} clients={clients} timeEntries={timeEntries} setTimeEntries={setTimeEntries} invoices={invoices} setInvoices={setInvoices} expenses={expenses} setExpenses={setExpenses} pdfLibrariesLoaded={pdfLibrariesLoaded} userProfile={userProfile} recurringInvoices={recurringInvoices} setRecurringInvoices={setRecurringInvoices} />;
             case 'timetracking': return <TimeTrackingView projects={projects} setProjects={setProjects} timeEntries={timeEntries} setTimeEntries={setTimeEntries} user={user} />;

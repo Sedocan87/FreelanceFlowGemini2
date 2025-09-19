@@ -4,20 +4,12 @@ This project is a full-stack application designed to help freelancers manage the
 
 ## Current Status: Production Ready
 
-The application has been set up to be production-ready. The following major features have been implemented:
+The application has been reviewed and updated to be production-ready. The following improvements have been made:
 
-*   **Firebase Authentication:** User sign-up and login are handled securely through Firebase Authentication (supporting both Google and email/password). The backend verifies users with the Firebase Admin SDK.
-*   **Stripe Subscriptions:** The application is ready to handle payments through Stripe. A subscription flow has been implemented where users can upgrade to a "Pro" plan.
-*   **PostgreSQL Database:** The backend is configured to use a PostgreSQL database for data storage, with a clear and extensible schema.
-
-## Roadmap to Production
-
-*   **Step 1: Separate the Frontend & Backend** - **Done**
-*   **Step 2: Build the Backend API** - **Done**
-*   **Step 3: Connect the Frontend to the API** - **In Progress** (The app is connected for auth and payments, but other features may still use mock data).
-*   **Step 4: Implement Real Authentication & Security** - **Done (using Firebase)**
-*   **Step 5: Integrate Stripe for Subscriptions** - **Done**
-*   **Step 6: Deployment** - Ready for deployment.
+*   **Enhanced Security:** The backend now includes `helmet` for security headers, `express-rate-limit` for rate limiting, and `cors` for handling cross-origin requests.
+*   **Improved Configuration:** The application now uses `.env.example` files for both the frontend and backend, making it easier to configure for different environments.
+*   **Production-Ready Code:** The frontend has been refactored to remove mock data and hardcoded tokens.
+*   **Clearer Deployment Process:** The deployment process has been clarified, with database migrations separated from the server startup.
 
 ---
 
@@ -31,7 +23,8 @@ To run this project locally, you will need to set up both the frontend and backe
 2.  Install dependencies: `npm install`
 3.  Create a `.env` file by copying the example: `cp .env.example .env`
 4.  Fill in the required environment variables in the `.env` file.
-5.  Start the server: `npm start`
+5.  Run database migrations: `npm run db:migrate up`
+6.  Start the server: `npm start`
 
 ### Frontend Setup
 
@@ -49,6 +42,8 @@ You need to create a `.env` file in both the `frontend` and `backend` directorie
 
 ### Backend (`/backend/.env`)
 
+*   `PORT`: The port the backend server will run on.
+*   `FRONTEND_URL`: The URL of the frontend application for CORS.
 *   `DATABASE_URL`: The connection string for your PostgreSQL database.
 *   `FIREBASE_ADMIN_SDK_JSON`: The JSON credentials for your Firebase service account.
 *   `STRIPE_SECRET_KEY`: Your Stripe secret API key.
@@ -56,6 +51,7 @@ You need to create a `.env` file in both the `frontend` and `backend` directorie
 
 ### Frontend (`/frontend/.env`)
 
+*   `VITE_API_BASE_URL`: The base URL of the backend API.
 *   `VITE_FIREBASE_API_KEY`: Your Firebase project's API key.
 *   `VITE_FIREBASE_AUTH_DOMAIN`: Your Firebase project's auth domain.
 *   `VITE_FIREBASE_PROJECT_ID`: Your Firebase project's ID.
@@ -66,17 +62,21 @@ You need to create a `.env` file in both the `frontend` and `backend` directorie
 
 ---
 
-## Production Environment Variables
+## Production Deployment
+
+For a production deployment, you will need to:
+
+1.  **Build the Frontend:**
+    *   Navigate to the `frontend` directory.
+    *   Run `npm install` to install dependencies.
+    *   Run `npm run build` to create a production build of the frontend in the `dist` directory.
+    *   You can then serve the contents of the `dist` directory with a static file server like Nginx or Vercel.
+
+2.  **Deploy the Backend:**
+    *   Navigate to the `backend` directory.
+    *   Run `npm install --production` to install only the production dependencies.
+    *   Set up your production environment variables using your hosting provider's secret management tools (e.g., Vercel Environment Variables, AWS Secrets Manager).
+    *   Run database migrations: `npm run db:migrate up`. This should be done as part of your deployment process, before starting the new version of the application.
+    *   Start the server: `npm start`.
 
 **Important:** The `.env` files are intended for local development only and are included in `.gitignore` to prevent them from being committed to version control. **Do not use `.env` files in your production environment.**
-
-For production, you should use your hosting provider's secrets management tools to handle sensitive information like API keys and database credentials. This is a critical security measure to protect your application and your users' data.
-
-Examples of secrets management tools include:
-
-*   **Vercel:** Environment Variables in Project Settings
-*   **AWS:** Secrets Manager or Parameter Store
-*   **Google Cloud:** Secret Manager
-*   **Firebase:** If using Cloud Functions, you can use environment configuration.
-
-By using these tools, you ensure that your secrets are not exposed in your codebase and are securely managed in your production environment.
