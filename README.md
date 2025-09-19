@@ -11,6 +11,19 @@ Backend (API Server): A new project built with Node.js and Express.js (as per yo
 Step 2: Build the Backend API
 The backend server will expose an API (Application Programming Interface), which is a set of URLs the frontend can call to request or send data.
 
+**Progress:**
+- **Done:**
+  - Initial Node.js/Express server setup.
+  - API routes created for `/projects`, `/clients`, and `/auth`.
+  - Switched to SQLite for local development.
+  - Implemented basic password hashing with `bcryptjs`.
+
+- **Next:**
+  - Resolve the database connectivity issue preventing API testing.
+  - Fully test all API endpoints.
+  - Implement JWT-based authentication (token generation and validation).
+  - Finalize database choice and connect to a production PostgreSQL (or other) database.
+
 Technology: We'll use Node.js, Express.js for the server framework, and PostgreSQL as the database for storing all the data.
 
 Endpoints: We will create endpoints for every action a user can take:
