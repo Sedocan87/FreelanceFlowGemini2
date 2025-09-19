@@ -76,8 +76,7 @@ const SettingsView = ({ user, onLogout, userProfile, setUserProfile, taxSettings
                     'Authorization': `Bearer ${idToken}`,
                 },
                 body: JSON.stringify({
-                    // This would be your actual Price ID from your Stripe Dashboard
-                    priceId: 'price_1234567890', // Replace with a real Price ID in a real app
+                    priceId: import.meta.env.VITE_STRIPE_PRICE_ID,
                     successUrl: window.location.origin + '/dashboard', // Redirect here on success
                     cancelUrl: window.location.href, // Return here on cancellation
                 }),
