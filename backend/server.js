@@ -12,7 +12,7 @@ const authRoutes = require('./routes/auth');
 const authMiddleware = require('./middleware/authMiddleware');
 
 // API routes
-app.use('/api/projects', projectRoutes);
+app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/clients', authMiddleware, clientRoutes);
 app.use('/api/auth', authRoutes);
 
