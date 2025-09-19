@@ -1,4 +1,5 @@
 require('dotenv').config();
+const logger = require('./logger');
 
 // Initialize Firebase Admin SDK
 require('./firebaseAdmin');
@@ -35,7 +36,7 @@ const runMigrations = () => {
             { cwd: __dirname, env: process.env },
             (err, stdout, stderr) => {
                 if (err) {
-                    console.error('Migration stderr:', stderr);
+                    logger.error('Migration stderr:', stderr);
                     reject(err);
                 } else {
                     resolve(stdout);
@@ -51,14 +52,14 @@ const runMigrations = () => {
 
 const startServer = async () => {
     try {
-        console.log('Running database migrations...');
+        logger.info('Running database migrations...');
         await runMigrations();
-        console.log('Migrations finished.');
+        logger.info('Migrations finished.');
         app.listen(port, () => {
-            console.log(`Server is running on port ${port}`);
+            logger.info(`Server is running on port ${port}`);
         });
     } catch (err) {
-        console.error('Failed to run migrations or start server.', err);
+        logger.error('Failed to run migrations or start server.', err);
         process.exit(1);
     }
 };

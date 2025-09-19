@@ -1,4 +1,5 @@
 const admin = require('firebase-admin');
+const logger = require('./logger');
 
 try {
   if (!process.env.FIREBASE_ADMIN_SDK_JSON) {
@@ -11,10 +12,10 @@ try {
     credential: admin.credential.cert(serviceAccount)
   });
 
-  console.log('Firebase Admin SDK initialized successfully.');
+  logger.info('Firebase Admin SDK initialized successfully.');
 
 } catch (error) {
-  console.error('Failed to initialize Firebase Admin SDK:', error);
+  logger.error('Failed to initialize Firebase Admin SDK:', error);
   // We don't want the app to run without firebase admin, so we exit
   process.exit(1);
 }

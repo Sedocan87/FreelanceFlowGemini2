@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../db');
 const authMiddleware = require('../middleware/authMiddleware');
+const logger = require('../logger');
 
 // POST /api/auth/sync
 // This endpoint is called after a user authenticates with Firebase on the client.
@@ -34,7 +35,7 @@ router.post('/sync', authMiddleware, async (req, res) => {
       res.status(201).json({ user: newUserResult.rows[0] });
     }
   } catch (err) {
-    console.error('Error during user sync:', err);
+    logger.error('Error during user sync:', err);
     // Check for unique constraint violation, just in case
     if (err.code === '23505') { // PostgreSQL unique violation error code
         return res.status(409).json({ error: 'User with this email or Firebase UID already exists.' });

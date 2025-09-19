@@ -1,4 +1,5 @@
 const admin = require('../firebaseAdmin');
+const logger = require('../logger');
 
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.header('Authorization');
@@ -14,7 +15,7 @@ const authMiddleware = async (req, res, next) => {
     req.user = decodedToken; // The decoded token has user info like uid, email, etc.
     next();
   } catch (error) {
-    console.error('Error verifying Firebase ID token:', error);
+    logger.error('Error verifying Firebase ID token:', error);
     res.status(401).json({ msg: 'Token is not valid' });
   }
 };
