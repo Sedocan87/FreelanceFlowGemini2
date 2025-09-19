@@ -63,3 +63,20 @@ You need to create a `.env` file in both the `frontend` and `backend` directorie
 *   `VITE_FIREBASE_MESSAGING_SENDER_ID`: Your Firebase project's messaging sender ID.
 *   `VITE_FIREBASE_APP_ID`: Your Firebase project's app ID.
 *   `VITE_STRIPE_PUBLISHABLE_KEY`: Your Stripe publishable API key.
+
+---
+
+## Production Environment Variables
+
+**Important:** The `.env` files are intended for local development only and are included in `.gitignore` to prevent them from being committed to version control. **Do not use `.env` files in your production environment.**
+
+For production, you should use your hosting provider's secrets management tools to handle sensitive information like API keys and database credentials. This is a critical security measure to protect your application and your users' data.
+
+Examples of secrets management tools include:
+
+*   **Vercel:** Environment Variables in Project Settings
+*   **AWS:** Secrets Manager or Parameter Store
+*   **Google Cloud:** Secret Manager
+*   **Firebase:** If using Cloud Functions, you can use environment configuration.
+
+By using these tools, you ensure that your secrets are not exposed in your codebase and are securely managed in your production environment.
