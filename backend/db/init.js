@@ -1,22 +1,20 @@
 const fs = require('fs').promises;
 const path = require('path');
-const { db } = require('../db'); // Corrected path, although previous one worked
+const { pool } = require('../db');
 
 const initializeDatabase = async () => {
   const sql = await fs.readFile(path.join(__dirname, 'init.sql'), 'utf8');
   console.log('Initializing database...');
 
-  return new Promise((resolve, reject) => {
-    db.exec(sql, (err) => {
-      if (err) {
-        console.error('Error initializing database:', err);
-        return reject(err);
-      }
-      console.log('Database initialized successfully.');
-      resolve();
-    });
-  });
+  try {
+    // Use the pool to execute the initialization script
+    await pool.query(sql);
+    console.log('Database initialized successfully.');
+  } catch (err) {
+    console.error('Error initializing database:', err);
+    // Re-throw the error to be caught by the server startup logic
+    throw err;
+  }
 };
 
-// Export the function
 module.exports = { initializeDatabase };

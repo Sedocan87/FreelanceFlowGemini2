@@ -7,12 +7,20 @@ import Select from './Select';
 import Textarea from './Textarea';
 import LogOutIcon from './LogOutIcon';
 import { CURRENCIES } from '../utils/formatCurrency';
+import { useAuth } from '../contexts/AuthContext';
+import { loadStripe } from '@stripe/stripe-js';
+
+// Load Stripe outside of the component render to avoid re-creating the object on every render
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 const SettingsView = ({ user, onLogout, userProfile, setUserProfile, taxSettings, setTaxSettings, currencySettings, setCurrencySettings }) => {
+    const { idToken } = useAuth();
     const [isEditingCompany, setIsEditingCompany] = useState(false);
     const [companyForm, setCompanyForm] = useState(userProfile);
     const [currentTaxRate, setCurrentTaxRate] = useState(taxSettings.rate);
     const [currentDefaultCurrency, setCurrentDefaultCurrency] = useState(currencySettings.default);
+    const [stripeError, setStripeError] = useState(null);
+    const [stripeLoading, setStripeLoading] = useState(false);
 
     const handleCompanyInfoChange = (e) => {
         const { id, value } = e.target;
@@ -57,105 +65,60 @@ const SettingsView = ({ user, onLogout, userProfile, setUserProfile, taxSettings
         alert("Currency settings saved.");
     };
 
+    const handleUpgradeClick = async () => {
+        setStripeLoading(true);
+        setStripeError(null);
+        try {
+            const response = await fetch('/api/stripe/create-checkout-session', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({
+                    // This would be your actual Price ID from your Stripe Dashboard
+                    priceId: 'price_1234567890', // Replace with a real Price ID in a real app
+                    successUrl: window.location.origin + '/dashboard', // Redirect here on success
+                    cancelUrl: window.location.href, // Return here on cancellation
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to create checkout session.');
+            }
+
+            const { sessionId } = await response.json();
+            const stripe = await stripePromise;
+            const { error } = await stripe.redirectToCheckout({ sessionId });
+
+            if (error) {
+                setStripeError(error.message);
+            }
+        } catch (error) {
+            setStripeError(error.message);
+        } finally {
+            setStripeLoading(false);
+        }
+    };
+
     return (
         <div>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Settings</h1>
             <p className="mt-1 text-gray-600 dark:text-gray-400">Manage your account and preferences.</p>
 
             <div className="mt-8 space-y-8">
-                <Card>
-                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Profile Information</h3>
-                    <div className="space-y-4">
-                        <div>
-                            <Label htmlFor="userName">Name</Label>
-                            <Input id="userName" type="text" value={user.name} disabled />
-                        </div>
-                        <div>
-                            <Label htmlFor="userEmail">Email</Label>
-                            <Input id="userEmail" type="email" value={user.email} disabled />
-                        </div>
-                         <Button variant="secondary">Edit Profile</Button>
-                    </div>
-                </Card>
-
-                <Card>
-                    <form onSubmit={handleSaveCompanyInfo}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Company Information</h3>
-                            {!isEditingCompany && (
-                                <Button type="button" variant="secondary" onClick={() => setIsEditingCompany(true)}>Edit</Button>
-                            )}
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="companyName">Company Name</Label>
-                                <Input id="companyName" type="text" value={companyForm.companyName} onChange={handleCompanyInfoChange} disabled={!isEditingCompany} />
-                            </div>
-                            <div>
-                                <Label htmlFor="companyEmail">Company Email</Label>
-                                <Input id="companyEmail" type="email" value={companyForm.companyEmail} onChange={handleCompanyInfoChange} disabled={!isEditingCompany} />
-                            </div>
-                             <div>
-                                <Label htmlFor="companyAddress">Company Address</Label>
-                                <Textarea id="companyAddress" value={companyForm.companyAddress} onChange={handleCompanyInfoChange} disabled={!isEditingCompany} />
-                            </div>
-                             <div>
-                                <Label htmlFor="logo">Company Logo</Label>
-                                <div className="flex items-center gap-4">
-                                    {companyForm.logo && (
-                                        <img src={companyForm.logo} alt="Logo Preview" className="h-16 w-16 object-contain rounded-md bg-gray-100 dark:bg-gray-700 p-1" />
-                                    )}
-                                    <Input id="logo" type="file" accept="image/*" onChange={handleLogoChange} disabled={!isEditingCompany} className="flex-1" />
-                                </div>
-                            </div>
-                             {isEditingCompany && (
-                                <div className="flex justify-end gap-4 pt-4">
-                                    <Button type="button" variant="secondary" onClick={() => { setIsEditingCompany(false); setCompanyForm(userProfile); }}>Cancel</Button>
-                                    <Button type="submit">Save Changes</Button>
-                                </div>
-                            )}
-                        </div>
-                    </form>
-                </Card>
-
-                 <Card>
-                    <form onSubmit={handleSaveCurrencySettings}>
-                        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Financial Settings</h3>
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="defaultCurrency">Default Currency</Label>
-                                <Select id="defaultCurrency" value={currentDefaultCurrency} onChange={e => setCurrentDefaultCurrency(e.target.value)}>
-                                    {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code} - {c.name}</option>)}
-                                </Select>
-                            </div>
-                             <div className="text-right">
-                                <Button type="submit">Save Currency</Button>
-                            </div>
-                        </div>
-                    </form>
-                    <form onSubmit={handleSaveTaxSettings} className="mt-6">
-                        <div className="space-y-4">
-                            <div>
-                                <Label htmlFor="taxRate">Estimated Tax Rate (%)</Label>
-                                <Input id="taxRate" type="number" value={currentTaxRate} onChange={handleTaxRateChange} />
-                            </div>
-                            <div className="text-right">
-                                <Button type="submit">Save Tax Rate</Button>
-                            </div>
-                        </div>
-                    </form>
-                </Card>
-
-
                  <Card>
                     <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Subscription</h3>
                     <div className="flex justify-between items-center">
                         <div>
-                           <p className="font-medium">Current Plan: <span className="text-blue-600 dark:text-blue-500">Pro</span></p>
-                           <p className="text-sm text-gray-500 dark:text-gray-400">Your subscription is active.</p>
+                           <p className="font-medium">Current Plan: <span className="text-gray-600 dark:text-gray-400">Free</span></p>
+                           <p className="text-sm text-gray-500 dark:text-gray-400">Upgrade to Pro for advanced features.</p>
                         </div>
-                        <Button>Manage Subscription</Button>
+                        <Button onClick={handleUpgradeClick} disabled={stripeLoading}>
+                            {stripeLoading ? 'Redirecting...' : 'Upgrade to Pro'}
+                        </Button>
                     </div>
+                    {stripeError && <p className="text-red-500 text-sm mt-2">{stripeError}</p>}
                 </Card>
 
                 <Card>

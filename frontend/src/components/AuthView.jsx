@@ -1,35 +1,74 @@
 import React, { useState } from 'react';
+import { auth, googleProvider } from '../../firebase';
+import {
+    signInWithPopup,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword
+} from 'firebase/auth';
 import Button from './Button';
 import Card from './Card';
 import Input from './Input';
 import Label from './Label';
 import GoogleIcon from './GoogleIcon';
 
-const AuthView = ({ onLogin }) => {
-    const [isLoginView, setIsLoginView] = useState(true);
-    const [email, setEmail] = useState('user@email.com');
-    const [password, setPassword] = useState('password123');
-    const [name, setName] = useState('');
+// This function will call our backend to sync the user
+const syncUserWithBackend = async (user) => {
+    if (!user) return;
+    try {
+        const token = await user.getIdToken();
+        await fetch('/api/auth/sync', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        // The AuthContext will handle the app state change, so no need to do anything here
+    } catch (error) {
+        console.error('Error syncing user with backend:', error);
+    }
+};
 
-    const handleSubmit = (e) => {
+const AuthView = () => {
+    const [isLoginView, setIsLoginView] = useState(true);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [name, setName] = useState(''); // Name is only for sign up
+    const [error, setError] = useState('');
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // In a real app, you would make an API call here.
-        // For this demo, we'll just simulate a successful login/signup.
-        if (isLoginView) {
-            if (email && password) {
-                onLogin({id: 1, name: 'Demo User', email });
+        setError(''); // Clear previous errors
+        try {
+            let userCredential;
+            if (isLoginView) {
+                userCredential = await signInWithEmailAndPassword(auth, email, password);
+            } else {
+                if (!name) {
+                    setError("Name is required for signing up.");
+                    return;
+                }
+                // Note: Firebase doesn't store the 'name' during email/password creation.
+                // We'd need to update the user's profile separately if we wanted that.
+                // The backend sync will handle getting the name into our DB.
+                userCredential = await createUserWithEmailAndPassword(auth, email, password);
             }
-        } else {
-             if (email && password && name) {
-                onLogin({id: 1, name, email });
-            }
+            await syncUserWithBackend(userCredential.user);
+        } catch (err) {
+            setError(err.message);
+            console.error(err);
         }
     };
 
-    const handleGoogleSignIn = () => {
-        // In a real app, this would trigger the Google OAuth flow.
-        // For this demo, we'll simulate a successful sign-in.
-        onLogin({ id: 1, name: 'Google User', email: 'google.user@example.com' });
+    const handleGoogleSignIn = async () => {
+        setError('');
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            await syncUserWithBackend(result.user);
+        } catch (err) {
+            setError(err.message);
+            console.error(err);
+        }
     };
 
     return (
@@ -43,17 +82,19 @@ const AuthView = ({ onLogin }) => {
                     <div className="flex border-b dark:border-gray-700 mb-6">
                         <button
                             className={`flex-1 py-3 text-center font-semibold transition-colors ${isLoginView ? 'text-blue-600 dark:text-blue-500 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
-                            onClick={() => setIsLoginView(true)}
+                            onClick={() => { setIsLoginView(true); setError(''); }}
                         >
                             Log In
                         </button>
                         <button
                             className={`flex-1 py-3 text-center font-semibold transition-colors ${!isLoginView ? 'text-blue-600 dark:text-blue-500 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'}`}
-                            onClick={() => setIsLoginView(false)}
+                            onClick={() => { setIsLoginView(false); setError(''); }}
                         >
                             Sign Up
                         </button>
                     </div>
+
+                    {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {!isLoginView && (
@@ -89,7 +130,7 @@ const AuthView = ({ onLogin }) => {
                 </Card>
                  <p className="text-center text-sm text-gray-500 mt-6">
                     {isLoginView ? "Don't have an account?" : "Already have an account?"}
-                    <button onClick={() => setIsLoginView(!isLoginView)} className="font-semibold text-blue-600 hover:underline ml-1">
+                    <button onClick={() => { setIsLoginView(!isLoginView); setError(''); }} className="font-semibold text-blue-600 hover:underline ml-1">
                         {isLoginView ? 'Sign Up' : 'Log In'}
                     </button>
                 </p>

@@ -1,4 +1,8 @@
 require('dotenv').config();
+
+// Initialize Firebase Admin SDK
+require('./firebaseAdmin');
+
 const express = require('express');
 const app = express();
 const port = process.env.PORT || 3001;
@@ -8,6 +12,7 @@ app.use(express.json());
 const projectRoutes = require('./routes/projects');
 const clientRoutes = require('./routes/clients');
 const authRoutes = require('./routes/auth');
+const stripeRoutes = require('./routes/stripe');
 
 const authMiddleware = require('./middleware/authMiddleware');
 
@@ -15,6 +20,7 @@ const authMiddleware = require('./middleware/authMiddleware');
 app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/clients', authMiddleware, clientRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/stripe', stripeRoutes);
 
 const { initializeDatabase } = require('./db/init');
 

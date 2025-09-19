@@ -1,42 +1,43 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { Pool } = require('pg');
 
-const dbPath = path.join(__dirname, 'db', 'freelanceflow.db');
-const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-    if (err) {
-        console.error('Error opening database', err.message);
-    } else {
-        console.log('Connected to the SQLite database.');
-    }
+if (!process.env.DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is not set.');
+}
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  // It's recommended to use SSL in production
+  // ssl: {
+  //   rejectUnauthorized: false
+  // }
 });
 
-// Promisify the db.all and db.run methods
-const query = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve(rows);
-            }
-        });
-    });
+pool.on('connect', () => {
+  console.log('Connected to the PostgreSQL database.');
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
+});
+
+// A simple query function
+const query = async (text, params) => {
+  const start = Date.now();
+  const res = await pool.query(text, params);
+  const duration = Date.now() - start;
+  console.log('executed query', { text, duration, rows: res.rowCount });
+  return res;
 };
 
-const run = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function(err) {
-            if (err) {
-                reject(err);
-            } else {
-                resolve({ lastID: this.lastID, changes: this.changes });
-            }
-        });
-    });
-};
+// The 'run' function is specific to sqlite's API.
+// With node-postgres, you use `query` for all operations.
+// We can create a helper for insert/update if we want to get the row count,
+// but for now, the standard query function should suffice for most uses.
+// For example, an INSERT can be `query('INSERT INTO users... RETURNING id')`
+// to get the new ID.
 
 module.exports = {
-    db,
-    query,
-    run
+  pool,
+  query
 };

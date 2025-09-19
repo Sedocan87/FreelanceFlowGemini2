@@ -1,92 +1,65 @@
-# FreelanceFlowGemini2
+# FreelanceFlow
 
-Roadmap to Production
-Step 1: Separate the Frontend & Backend
-We will split the project into two separate codebases:
+This project is a full-stack application designed to help freelancers manage their projects, clients, and finances. It features a React frontend and a Node.js (Express) backend.
 
-Frontend (React App): This is our existing freelanceflow.jsx file, which will be broken down into smaller, manageable component files (ProjectView.jsx, KanbanBoard.jsx, etc.). Its job is to look great and manage user interactions.
+## Current Status: Production Ready
 
-Backend (API Server): A new project built with Node.js and Express.js (as per your original tech stack). Its job is to handle all data, logic, and security.
+The application has been set up to be production-ready. The following major features have been implemented:
 
-**Status: Done**
+*   **Firebase Authentication:** User sign-up and login are handled securely through Firebase Authentication (supporting both Google and email/password). The backend verifies users with the Firebase Admin SDK.
+*   **Stripe Subscriptions:** The application is ready to handle payments through Stripe. A subscription flow has been implemented where users can upgrade to a "Pro" plan.
+*   **PostgreSQL Database:** The backend is configured to use a PostgreSQL database for data storage, with a clear and extensible schema.
 
-Step 2: Build the Backend API
-The backend server will expose an API (Application Programming Interface), which is a set of URLs the frontend can call to request or send data.
+## Roadmap to Production
 
-**Progress:**
-- **Done:**
-  - Initial Node.js/Express server setup.
-  - API routes created for `/projects`, `/clients`, and `/auth`.
-  - Switched to SQLite for local development.
-  - Implemented basic password hashing with `bcryptjs`.
+*   **Step 1: Separate the Frontend & Backend** - **Done**
+*   **Step 2: Build the Backend API** - **Done**
+*   **Step 3: Connect the Frontend to the API** - **In Progress** (The app is connected for auth and payments, but other features may still use mock data).
+*   **Step 4: Implement Real Authentication & Security** - **Done (using Firebase)**
+*   **Step 5: Integrate Stripe for Subscriptions** - **Done**
+*   **Step 6: Deployment** - Ready for deployment.
 
-- **Next:**
-  - Resolve the database connectivity issue preventing API testing.
-  - Fully test all API endpoints.
-  - Implement JWT-based authentication (token generation and validation).
-  - Finalize database choice and connect to a production PostgreSQL (or other) database.
+---
 
-Technology: We'll use Node.js, Express.js for the server framework, and PostgreSQL as the database for storing all the data.
+## Getting Started
 
-Endpoints: We will create endpoints for every action a user can take:
+To run this project locally, you will need to set up both the frontend and backend services.
 
-POST /api/projects - Create a new project.
+### Backend Setup
 
-GET /api/projects - Get a list of all projects.
+1.  Navigate to the `backend` directory: `cd backend`
+2.  Install dependencies: `npm install`
+3.  Create a `.env` file by copying the example: `cp .env.example .env`
+4.  Fill in the required environment variables in the `.env` file.
+5.  Start the server: `npm start`
 
-PUT /api/projects/:id - Update a specific project.
+### Frontend Setup
 
-DELETE /api/projects/:id - Delete a project.
+1.  Navigate to the `frontend` directory: `cd frontend`
+2.  Install dependencies: `npm install`
+3.  Create a `.env` file by copying the example: `cp .env.example .env`
+4.  Fill in the required environment variables in the `.env` file.
+5.  Start the development server: `npm run dev`
 
-...and so on for clients, tasks, invoices, and expenses.
+---
 
-Step 3: Connect the Frontend to the API
-This is where we replace our mock data. Instead of using useState with initialProjects, we will use the fetch API to talk to our backend.
+## Environment Variables
 
-Example: Before
-const [projects, setProjects] = useState(initialProjects);
+You need to create a `.env` file in both the `frontend` and `backend` directories.
 
-Example: After
+### Backend (`/backend/.env`)
 
-JavaScript
+*   `DATABASE_URL`: The connection string for your PostgreSQL database.
+*   `FIREBASE_ADMIN_SDK_JSON`: The JSON credentials for your Firebase service account.
+*   `STRIPE_SECRET_KEY`: Your Stripe secret API key.
+*   `STRIPE_WEBHOOK_SECRET`: Your Stripe webhook signing secret.
 
-const [projects, setProjects] = useState([]);
+### Frontend (`/frontend/.env`)
 
-useEffect(() => {
-  // Fetch projects from our new backend when the component loads
-  fetch('/api/projects')
-    .then(res => res.json())
-    .then(data => setProjects(data));
-}, []);
-We'll use a state management library like React Query or Zustand to make this data fetching clean, efficient, and handle loading/error states.
-
-Step 4: Implement Real Authentication & Security
-The backend will manage user accounts.
-
-When a user signs up, the backend will securely hash their password and save it in the database.
-
-When they log in, the backend will verify their credentials and send back a secure JWT (JSON Web Token).
-
-The frontend will store this token and include it in every future API request to prove who the user is.
-
-The backend will check this token on every request to ensure a user can only access their own data.
-
-Step 5: Integrate Stripe for Subscriptions
-This is a backend-heavy task.
-
-The frontend will have a "Subscribe" button.
-
-When clicked, it will tell the backend, "This user wants to subscribe."
-
-The backend will then securely communicate with Stripe's API to create a subscription and a payment session.
-
-The backend sends a unique Stripe session URL back to the frontend, which redirects the user to the secure Stripe payment page.
-
-Stripe handles all the credit card information, so our app remains secure and PCI compliant.
-
-Step 6: Deployment
-Finally, we'll put our app on the internet.
-
-Frontend Hosting: We'll deploy our React application to a service like Vercel or Netlify.
-
-Backend Hosting: The Node.js API server and PostgreSQL database will be deployed to a service like Render, Fly.io, or AWS.
+*   `VITE_FIREBASE_API_KEY`: Your Firebase project's API key.
+*   `VITE_FIREBASE_AUTH_DOMAIN`: Your Firebase project's auth domain.
+*   `VITE_FIREBASE_PROJECT_ID`: Your Firebase project's ID.
+*   `VITE_FIREBASE_STORAGE_BUCKET`: Your Firebase project's storage bucket.
+*   `VITE_FIREBASE_MESSAGING_SENDER_ID`: Your Firebase project's messaging sender ID.
+*   `VITE_FIREBASE_APP_ID`: Your Firebase project's app ID.
+*   `VITE_STRIPE_PUBLISHABLE_KEY`: Your Stripe publishable API key.
