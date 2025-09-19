@@ -1,7 +1,7 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
-const dbPath = '/app/backend/db/freelanceflow.db'; // Using absolute path
+const dbPath = path.join(__dirname, 'db', 'freelanceflow.db');
 const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
     if (err) {
         console.error('Error opening database', err.message);

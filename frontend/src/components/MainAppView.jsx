@@ -21,7 +21,7 @@ import ReportingView from './ReportingView';
 import ExpensesView from './ExpensesView';
 import TeamView from './TeamView';
 import SettingsView from './SettingsView';
-import { initialClients, initialProjects, initialTimeEntries, initialInvoices, initialExpenses, initialUserProfile, initialTeamMembers, initialRecurringInvoices, initialTaxSettings, initialCurrencySettings } from '../mockData';
+import { initialClients, initialTimeEntries, initialInvoices, initialExpenses, initialUserProfile, initialTeamMembers, initialRecurringInvoices, initialTaxSettings, initialCurrencySettings } from '../mockData';
 
 const MainAppView = ({ user, onLogout }) => {
     const [activeView, setActiveView] = useState('dashboard');
@@ -29,7 +29,19 @@ const MainAppView = ({ user, onLogout }) => {
     const [isDarkMode, setIsDarkMode] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [clients, setClients] = useState(initialClients);
-    const [projects, setProjects] = useState(initialProjects);
+    const [projects, setProjects] = useState([]);
+    const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+    useEffect(() => {
+        console.log("Fetching projects...");
+        fetch('/api/projects')
+            .then(res => res.json())
+            .then(data => {
+                console.log("Projects data:", data);
+                setProjects(data);
+            })
+            .catch(err => console.error("Failed to fetch projects", err))
+            .finally(() => setIsLoadingProjects(false));
+    }, []);
     const [timeEntries, setTimeEntries] = useState(initialTimeEntries);
     const [invoices, setInvoices] = useState(initialInvoices);
     const [expenses, setExpenses] = useState(initialExpenses);
@@ -137,7 +149,7 @@ const MainAppView = ({ user, onLogout }) => {
 
         switch (activeView) {
             case 'dashboard': return <DashboardView projects={projects} clients={clients} timeEntries={timeEntries} invoices={invoices} taxSettings={taxSettings} currencySettings={currencySettings} />;
-            case 'projects': return <ProjectsView projects={projects} setProjects={setProjects} clients={clients} teamMembers={teamMembers} currencySettings={currencySettings} setViewingProject={handleSetViewingProject} />;
+            case 'projects': return <ProjectsView projects={projects} setProjects={setProjects} clients={clients} teamMembers={teamMembers} currencySettings={currencySettings} setViewingProject={handleSetViewingProject} isLoading={isLoadingProjects} />;
             case 'clients': return <ClientsView clients={clients} setClients={setClients} />;
             case 'invoices': return <InvoicesView projects={projects} clients={clients} timeEntries={timeEntries} setTimeEntries={setTimeEntries} invoices={invoices} setInvoices={setInvoices} expenses={expenses} setExpenses={setExpenses} pdfLibrariesLoaded={pdfLibrariesLoaded} userProfile={userProfile} recurringInvoices={recurringInvoices} setRecurringInvoices={setRecurringInvoices} />;
             case 'timetracking': return <TimeTrackingView projects={projects} setProjects={setProjects} timeEntries={timeEntries} setTimeEntries={setTimeEntries} user={user} />;
