@@ -3,6 +3,7 @@ const router = express.Router();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const authMiddleware = require('../middleware/authMiddleware');
 const { query } = require('../db');
+const logger = require('../logger');
 
 // POST /api/stripe/create-checkout-session
 // Creates a Stripe Checkout session for a subscription.
@@ -54,7 +55,7 @@ router.post('/create-checkout-session', express.json(), authMiddleware, async (r
 
     res.json({ sessionId: session.id });
   } catch (error) {
-    console.error('Stripe session creation failed:', error);
+    logger.error('Stripe session creation failed:', error);
     res.status(500).json({ error: 'Failed to create Stripe session.' });
   }
 });
@@ -69,7 +70,7 @@ router.post('/webhook', express.raw({type: 'application/json'}), async (req, res
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
   } catch (err) {
-    console.error(`Webhook Error: ${err.message}`);
+    logger.error(`Webhook Error: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -114,7 +115,7 @@ router.post('/webhook', express.raw({type: 'application/json'}), async (req, res
       break;
     }
     default:
-      console.log(`Unhandled event type ${event.type}`);
+      logger.info(`Unhandled event type ${event.type}`);
   }
 
   res.status(200).json({ received: true });
