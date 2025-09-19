@@ -9,7 +9,7 @@ import Select from './Select';
 import TrashIcon from './TrashIcon';
 import { CURRENCIES } from '../utils/formatCurrency';
 
-const ProjectsView = ({ projects, setProjects, clients, teamMembers, currencySettings, setViewingProject }) => {
+const ProjectsView = ({ projects, setProjects, clients, teamMembers, currencySettings, setViewingProject, isLoading }) => {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
     const [projectToDelete, setProjectToDelete] = useState(null);
@@ -140,31 +140,46 @@ const ProjectsView = ({ projects, setProjects, clients, teamMembers, currencySet
                         </tr>
                     </thead>
                     <tbody className="divide-y dark:divide-gray-700">
-                        {projects.map(project => (
-                             <tr key={project.id}>
-                                <td className="p-4 font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer" onClick={() => setViewingProject(project)}>
-                                    {project.name}
-                                </td>
-                                <td className="p-4 text-gray-600 dark:text-gray-400">{project.client}</td>
-                                <td className="p-4 text-gray-600 dark:text-gray-400">{teamMemberMap[project.assignedTo] || 'Unassigned'}</td>
-                                <td className="p-4">
-                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[project.status]}`}>
-                                        {project.status}
-                                    </span>
-                                </td>
-                                <td className="p-4 text-gray-800 dark:text-gray-100 text-right font-mono">{project.tracked.toFixed(2)}</td>
-                                <td className="p-4 text-right">
-                                    <div className="flex justify-end gap-2">
-                                        <Button variant="ghost" className="px-2" onClick={() => openEditDialog(project)}>
-                                            <EditIcon className="w-4 h-4" />
-                                        </Button>
-                                        <Button variant="ghost" className="px-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50" onClick={() => setProjectToDelete(project)}>
-                                            <TrashIcon className="w-4 h-4" />
-                                        </Button>
-                                    </div>
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan="6" className="text-center p-8">
+                                    <p className="text-gray-500">Loading projects...</p>
                                 </td>
                             </tr>
-                        ))}
+                        ) : projects.length === 0 ? (
+                            <tr>
+                                <td colSpan="6" className="text-center p-8">
+                                    <p className="text-gray-500">No projects found.</p>
+                                    <Button className="mt-4" onClick={openAddDialog}>Create Your First Project</Button>
+                                </td>
+                            </tr>
+                        ) : (
+                            projects.map(project => (
+                                 <tr key={project.id}>
+                                    <td className="p-4 font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer" onClick={() => setViewingProject(project)}>
+                                        {project.name}
+                                    </td>
+                                    <td className="p-4 text-gray-600 dark:text-gray-400">{project.client}</td>
+                                    <td className="p-4 text-gray-600 dark:text-gray-400">{teamMemberMap[project.assignedTo] || 'Unassigned'}</td>
+                                    <td className="p-4">
+                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[project.status]}`}>
+                                            {project.status}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-gray-800 dark:text-gray-100 text-right font-mono">{project.tracked.toFixed(2)}</td>
+                                    <td className="p-4 text-right">
+                                        <div className="flex justify-end gap-2">
+                                            <Button variant="ghost" className="px-2" onClick={() => openEditDialog(project)}>
+                                                <EditIcon className="w-4 h-4" />
+                                            </Button>
+                                            <Button variant="ghost" className="px-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50" onClick={() => setProjectToDelete(project)}>
+                                                <TrashIcon className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </Card>

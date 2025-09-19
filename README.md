@@ -8,6 +8,8 @@ Frontend (React App): This is our existing freelanceflow.jsx file, which will be
 
 Backend (API Server): A new project built with Node.js and Express.js (as per your original tech stack). Its job is to handle all data, logic, and security.
 
+**Status: Done**
+
 Step 2: Build the Backend API
 The backend server will expose an API (Application Programming Interface), which is a set of URLs the frontend can call to request or send data.
 
