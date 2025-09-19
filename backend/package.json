@@ -4,12 +4,15 @@
   "description": "Backend for FreelanceFlow",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "db:migrate": "node-pg-migrate",
+    "db:migrate:create": "node-pg-migrate create"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
     "express": "^4.21.2",
     "firebase-admin": "^12.1.0",
+    "node-pg-migrate": "^8.0.3",
     "pg": "^8.11.5",
     "stripe": "^15.8.0"
   }

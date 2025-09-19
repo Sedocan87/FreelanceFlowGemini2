@@ -25,13 +25,42 @@ app.use('/api/projects', authMiddleware, projectRoutes);
 app.use('/api/clients', authMiddleware, clientRoutes);
 app.use('/api/auth', authRoutes);
 
-const { initializeDatabase } = require('./db/init');
+const { exec } = require('child_process');
 
-initializeDatabase().then(() => {
-    app.listen(port, () => {
-        console.log(`Server is running on port ${port}`);
+const runMigrations = () => {
+    return new Promise((resolve, reject) => {
+        // We need to be in the backend directory to run this command
+        const migrate = exec(
+            'npm run db:migrate up',
+            { cwd: __dirname, env: process.env },
+            (err, stdout, stderr) => {
+                if (err) {
+                    console.error('Migration stderr:', stderr);
+                    reject(err);
+                } else {
+                    resolve(stdout);
+                }
+            }
+        );
+
+        // Forward stdout+stderr to this process
+        migrate.stdout.pipe(process.stdout);
+        migrate.stderr.pipe(process.stderr);
     });
-}).catch(err => {
-    console.error('Failed to initialize database. Server not started.', err);
-    process.exit(1);
-});
+};
+
+const startServer = async () => {
+    try {
+        console.log('Running database migrations...');
+        await runMigrations();
+        console.log('Migrations finished.');
+        app.listen(port, () => {
+            console.log(`Server is running on port ${port}`);
+        });
+    } catch (err) {
+        console.error('Failed to run migrations or start server.', err);
+        process.exit(1);
+    }
+};
+
+startServer();
