@@ -1,32 +1,22 @@
-const jwt = require('jsonwebtoken');
+const admin = require('../firebaseAdmin');
 
-module.exports = function(req, res, next) {
-  // Get token from header
+const authMiddleware = async (req, res, next) => {
   const authHeader = req.header('Authorization');
 
-  // Check if not token
-  if (!authHeader) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ msg: 'No token, authorization denied' });
   }
 
-  // Check if token is in the correct format 'Bearer <token>'
-  const tokenParts = authHeader.split(' ');
-  if (tokenParts.length !== 2 || tokenParts[0] !== 'Bearer') {
-    return res.status(401).json({ msg: 'Token is not valid' });
-  }
+  const idToken = authHeader.split('Bearer ')[1];
 
-  const token = tokenParts[1];
-
-  // Verify token
   try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-        throw new Error('JWT_SECRET is not defined in the environment variables.');
-    }
-    const decoded = jwt.verify(token, secret);
-    req.user = decoded.user;
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    req.user = decodedToken; // The decoded token has user info like uid, email, etc.
     next();
-  } catch (err) {
+  } catch (error) {
+    console.error('Error verifying Firebase ID token:', error);
     res.status(401).json({ msg: 'Token is not valid' });
   }
 };
+
+module.exports = authMiddleware;
