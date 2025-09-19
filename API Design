@@ -1,0 +1,170 @@
+FreelanceFlow API Design (Version 1.0)
+This document outlines the API endpoints for the FreelanceFlow application. This API will be responsible for all data management, business logic, and security.
+
+General Principles
+Architecture: RESTful
+
+Data Format: JSON
+
+Authentication: All endpoints (except for /auth/login and /auth/register) will require a Bearer token in the Authorization header. The token will be a JSON Web Token (JWT).
+
+Base URL: /api/v1
+
+1. Authentication (/auth)
+Handles user registration, login, and session management.
+
+POST /auth/register
+Description: Creates a new user account.
+
+Request Body:
+
+{
+  "name": "Jane Doe",
+  "email": "jane.doe@example.com",
+  "password": "a-strong-password"
+}
+
+Response (201 Created):
+
+{
+  "user": {
+    "id": 1,
+    "name": "Jane Doe",
+    "email": "jane.doe@example.com"
+  },
+  "token": "your_jwt_token_here"
+}
+
+POST /auth/login
+Description: Authenticates a user and returns a JWT.
+
+Request Body:
+
+{
+  "email": "jane.doe@example.com",
+  "password": "the-correct-password"
+}
+
+Response (200 OK):
+
+{
+  "user": {
+    "id": 1,
+    "name": "Jane Doe",
+    "email": "jane.doe@example.com"
+  },
+  "token": "your_jwt_token_here"
+}
+
+2. Clients (/clients)
+Manages all client-related data.
+
+GET /clients
+Description: Retrieves a list of all clients for the authenticated user.
+
+Response (200 OK):
+
+[
+  {
+    "id": 1,
+    "name": "Innovate Inc.",
+    "email": "contact@innovate.com"
+  },
+  {
+    "id": 2,
+    "name": "Quantum Solutions",
+    "email": "hello@quantum.dev"
+  }
+]
+
+POST /clients
+Description: Creates a new client.
+
+Request Body:
+
+{
+  "name": "New Awesome Client",
+  "email": "contact@new.co"
+}
+
+Response (201 Created):
+
+{
+  "id": 3,
+  "name": "New Awesome Client",
+  "email": "contact@new.co"
+}
+
+PUT /clients/:id
+Description: Updates an existing client's information.
+
+Request Body:
+
+{
+  "name": "New Awesome Client Inc.",
+  "email": "contact@new-client.com"
+}
+
+Response (200 OK):
+
+{
+  "id": 3,
+  "name": "New Awesome Client Inc.",
+  "email": "contact@new-client.com"
+}
+
+DELETE /clients/:id
+Description: Deletes a client. Note: The backend should handle logic for what happens to associated projects (e.g., prevent deletion if projects exist, or cascade delete).
+
+Response (204 No Content): No response body.
+
+3. Projects (/projects)
+Manages all project-related data.
+
+GET /projects
+Description: Retrieves a list of all projects for the authenticated user.
+
+Response (200 OK):
+
+[
+  {
+    "id": 1,
+    "name": "Mobile App Redesign",
+    "clientId": 3,
+    "status": "In Progress",
+    "tracked": 25.5,
+    "assignedTo": 2,
+    "billing": { "type": "Hourly", "rate": 120 },
+    "budget": null,
+    "currency": "USD"
+  }
+]
+
+POST /projects
+Description: Creates a new project.
+
+Request Body:
+
+{
+  "name": "New Website Build",
+  "clientId": 1,
+  "status": "Planning",
+  "assignedTo": 1,
+  "billing": { "type": "Fixed Price" },
+  "budget": 20000,
+  "currency": "USD"
+}
+
+Response (201 Created): Returns the newly created project object.
+
+PUT /projects/:id
+Description: Updates an existing project.
+
+Request Body: Same as POST, containing the fields to be updated.
+
+Response (200 OK): Returns the updated project object.
+
+DELETE /projects/:id
+Description: Deletes a project.
+
+Response (204 No Content): No response body.
