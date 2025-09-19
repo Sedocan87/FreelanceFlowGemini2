@@ -1,14 +1,28 @@
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
-// Placeholder for API routes
-app.get('/api/v1', (req, res) => {
-  res.json({ message: 'Welcome to the FreelanceFlow API!' });
-});
+const projectRoutes = require('./routes/projects');
+const clientRoutes = require('./routes/clients');
+const authRoutes = require('./routes/auth');
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+const authMiddleware = require('./middleware/authMiddleware');
+
+// API routes
+app.use('/api/projects', authMiddleware, projectRoutes);
+app.use('/api/clients', authMiddleware, clientRoutes);
+app.use('/api/auth', authRoutes);
+
+const { initializeDatabase } = require('./db/init');
+
+initializeDatabase().then(() => {
+    app.listen(port, () => {
+        console.log(`Server is running on port ${port}`);
+    });
+}).catch(err => {
+    console.error('Failed to initialize database. Server not started.', err);
+    process.exit(1);
 });
