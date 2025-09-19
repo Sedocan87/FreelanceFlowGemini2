@@ -33,13 +33,26 @@ const MainAppView = ({ user, onLogout }) => {
     const [isLoadingProjects, setIsLoadingProjects] = useState(true);
     useEffect(() => {
         console.log("Fetching projects...");
-        fetch('/api/projects')
-            .then(res => res.json())
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7ImlkIjoxfSwiaWF0IjoxNzU4MjY5MjU5LCJleHAiOjE3NTgyNzI4NTl9.QUlLxnnnog0BtIOjk88IyMgj_BWTYtHby1OvrcBDxMQ'; // Temporary token for development
+        fetch('/api/projects', {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(res => {
+                if (!res.ok) {
+                    // Log the error response for more details
+                    return res.json().then(errorData => {
+                        throw new Error(`API Error: ${res.status} ${res.statusText} - ${JSON.stringify(errorData)}`);
+                    });
+                }
+                return res.json();
+            })
             .then(data => {
                 console.log("Projects data:", data);
                 setProjects(data);
             })
-            .catch(err => console.error("Failed to fetch projects", err))
+            .catch(err => console.error("Failed to fetch projects:", err))
             .finally(() => setIsLoadingProjects(false));
     }, []);
     const [timeEntries, setTimeEntries] = useState(initialTimeEntries);

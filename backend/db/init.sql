@@ -32,3 +32,8 @@ CREATE TABLE IF NOT EXISTS projects (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (assigned_to) REFERENCES users(id)
 );
+
+-- Default user for development
+-- The password is 'password123'
+INSERT INTO users (id, name, email, password) VALUES (1, 'Test User', 'test@example.com', '$2b$10$FkyBFURb5xwzTfUdS/cM5OzWmuQwnEA38wu82YcqDCgBPiGsziTHq')
+ON CONFLICT(id) DO NOTHING;
