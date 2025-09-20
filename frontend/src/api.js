@@ -60,6 +60,9 @@ export const getSettings = (token) => request('/settings', 'GET', null, token);
 export const updateSettings = (data, token) => request('/settings', 'PUT', data, token);
 
 export const getTeam = (token) => request('/team', 'GET', null, token);
+export const inviteTeamMember = (data, token) => request('/team/invite', 'POST', data, token);
+export const updateTeamMember = (id, data, token) => request(`/team/${id}`, 'PUT', data, token);
+export const deleteTeamMember = (id, token) => request(`/team/${id}`, 'DELETE', null, token);
 
 export const getRecurringInvoices = (token) => request('/recurring-invoices', 'GET', null, token);
 export const addRecurringInvoice = (data, token) => request('/recurring-invoices', 'POST', data, token);
