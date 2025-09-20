@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import Card from './Card';
 import Dialog from './Dialog';
@@ -8,8 +8,12 @@ import Label from './Label';
 import Select from './Select';
 import TrashIcon from './TrashIcon';
 import { formatCurrency } from '../utils/formatCurrency';
+import { useAuth } from '../contexts/AuthContext';
+import { getExpenses, addExpense, updateExpense, deleteExpense } from '../api';
 
-const ExpensesView = ({ projects, setExpenses, expenses }) => {
+const ExpensesView = ({ projects }) => {
+    const { idToken } = useAuth();
+    const [expenses, setExpenses] = useState([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingExpense, setEditingExpense] = useState(null);
     const [expenseToDelete, setExpenseToDelete] = useState(null);
@@ -19,6 +23,20 @@ const ExpensesView = ({ projects, setExpenses, expenses }) => {
     const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
     const [formDescription, setFormDescription] = useState('');
     const [formIsBillable, setFormIsBillable] = useState(true);
+
+    useEffect(() => {
+        const fetchExpenses = async () => {
+            if (idToken) {
+                try {
+                    const data = await getExpenses(idToken);
+                    setExpenses(data);
+                } catch (error) {
+                    console.error('Error fetching expenses:', error);
+                }
+            }
+        };
+        fetchExpenses();
+    }, [idToken]);
 
     const projectMap = projects.reduce((acc, proj) => {
         acc[proj.id] = {name: proj.name, currency: proj.currency };
@@ -50,32 +68,42 @@ const ExpensesView = ({ projects, setExpenses, expenses }) => {
         setEditingExpense(null);
     };
 
-    const handleSaveExpense = (e) => {
+    const handleSaveExpense = async (e) => {
         e.preventDefault();
         const amountNum = parseFloat(formAmount);
         if (formDescription.trim() && formProjectId && !isNaN(amountNum) && amountNum > 0) {
-            if (editingExpense) {
-                setExpenses(expenses.map(ex => ex.id === editingExpense.id ? { ...ex, projectId: parseInt(formProjectId), amount: amountNum, date: formDate, description: formDescription, isBillable: formIsBillable } : ex));
-            } else {
-                const newExpense = {
-                    id: expenses.length > 0 ? Math.max(...expenses.map(ex => ex.id)) + 1 : 1,
-                    projectId: parseInt(formProjectId),
-                    amount: amountNum,
-                    date: formDate,
-                    description: formDescription,
-                    isBilled: false,
-                    isBillable: formIsBillable,
-                };
-                setExpenses([newExpense, ...expenses]);
+            const expenseData = {
+                projectId: parseInt(formProjectId),
+                amount: amountNum,
+                date: formDate,
+                description: formDescription,
+                isBillable: formIsBillable,
+            };
+
+            try {
+                if (editingExpense) {
+                    const updated = await updateExpense(editingExpense.id, expenseData, idToken);
+                    setExpenses(expenses.map(ex => ex.id === editingExpense.id ? updated : ex));
+                } else {
+                    const added = await addExpense({ ...expenseData, isBilled: false }, idToken);
+                    setExpenses([added, ...expenses]);
+                }
+                closeDialog();
+            } catch (error) {
+                console.error('Error saving expense:', error);
             }
-            closeDialog();
         }
     };
 
-    const handleDeleteExpense = () => {
+    const handleDeleteExpense = async () => {
         if (expenseToDelete) {
-            setExpenses(expenses.filter(ex => ex.id !== expenseToDelete.id));
-            setExpenseToDelete(null);
+            try {
+                await deleteExpense(expenseToDelete.id, idToken);
+                setExpenses(expenses.filter(ex => ex.id !== expenseToDelete.id));
+                setExpenseToDelete(null);
+            } catch (error) {
+                console.error('Error deleting expense:', error);
+            }
         }
     };
 

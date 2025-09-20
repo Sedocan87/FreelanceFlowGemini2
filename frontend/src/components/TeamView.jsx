@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import Card from './Card';
 import Dialog from './Dialog';
@@ -7,13 +7,31 @@ import Input from './Input';
 import Label from './Label';
 import TrashIcon from './TrashIcon';
 import { formatCurrency } from '../utils/formatCurrency';
+import { useAuth } from '../contexts/AuthContext';
+import { getTeam } from '../api';
 
-const TeamView = ({ teamMembers, setTeamMembers, projects, setProjects }) => {
+const TeamView = ({ projects, setProjects }) => {
+    const { idToken } = useAuth();
+    const [teamMembers, setTeamMembers] = useState([]);
     const [isInviteOpen, setIsInviteOpen] = useState(false);
     const [editingMember, setEditingMember] = useState(null);
     const [memberToDelete, setMemberToDelete] = useState(null);
 
     const [formState, setFormState] = useState({email: '', rate: 50});
+
+    useEffect(() => {
+        const fetchTeam = async () => {
+            if (idToken) {
+                try {
+                    const data = await getTeam(idToken);
+                    setTeamMembers(data);
+                } catch (error) {
+                    console.error('Error fetching team members:', error);
+                }
+            }
+        };
+        fetchTeam();
+    }, [idToken]);
 
     const handleInvite = (e) => {
         e.preventDefault();

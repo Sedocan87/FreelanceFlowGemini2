@@ -1,10 +1,36 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Card from './Card';
 import Button from './Button';
 import { formatCurrency } from '../utils/formatCurrency';
+import { useAuth } from '../contexts/AuthContext';
+import { getTimeEntries, getExpenses, getTeam } from '../api';
 
-const ReportingView = ({ projects, clients, timeEntries, teamMembers, expenses }) => {
+const ReportingView = ({ projects, clients }) => {
+    const { idToken } = useAuth();
+    const [timeEntries, setTimeEntries] = useState([]);
+    const [expenses, setExpenses] = useState([]);
+    const [teamMembers, setTeamMembers] = useState([]);
     const [filter, setFilter] = useState('all'); // 'week', 'month', 'all'
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (idToken) {
+                try {
+                    const [timeData, expenseData, teamData] = await Promise.all([
+                        getTimeEntries(idToken),
+                        getExpenses(idToken),
+                        getTeam(idToken)
+                    ]);
+                    setTimeEntries(timeData);
+                    setExpenses(expenseData);
+                    setTeamMembers(teamData);
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                }
+            }
+        };
+        fetchData();
+    }, [idToken]);
 
     const getFilteredEntries = React.useCallback(() => {
         const now = new Date();

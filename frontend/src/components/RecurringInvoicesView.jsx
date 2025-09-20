@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import Card from './Card';
 import Dialog from './Dialog';
@@ -8,14 +8,18 @@ import Label from './Label';
 import Select from './Select';
 import TrashIcon from './TrashIcon';
 import { formatCurrency, CURRENCIES } from '../utils/formatCurrency';
+import { useAuth } from '../contexts/AuthContext';
+import { getRecurringInvoices, addRecurringInvoice, updateRecurringInvoice, deleteRecurringInvoice } from '../api';
 
-const RecurringInvoicesView = ({ clients, recurringInvoices, setRecurringInvoices }) => {
+const RecurringInvoicesView = ({ clients }) => {
+    const { idToken } = useAuth();
+    const [recurringInvoices, setRecurringInvoices] = useState([]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingRecurring, setEditingRecurring] = useState(null);
     const [recurringToDelete, setRecurringToDelete] = useState(null);
 
     const defaultFormState = {
-        clientName: clients.length > 0 ? clients[0].name : '',
+        clientId: clients.length > 0 ? clients[0].id : '',
         frequency: 'Monthly',
         startDate: new Date().toISOString().split('T')[0],
         lineItems: [{ description: '', amount: '' }],
@@ -23,6 +27,20 @@ const RecurringInvoicesView = ({ clients, recurringInvoices, setRecurringInvoice
     };
 
     const [formState, setFormState] = useState(defaultFormState);
+
+    useEffect(() => {
+        const fetchRecurringInvoices = async () => {
+            if (idToken) {
+                try {
+                    const data = await getRecurringInvoices(idToken);
+                    setRecurringInvoices(data);
+                } catch (error) {
+                    console.error('Error fetching recurring invoices:', error);
+                }
+            }
+        };
+        fetchRecurringInvoices();
+    }, [idToken]);
 
     const handleAddItem = () => setFormState(prev => ({...prev, lineItems: [...prev.lineItems, {description: '', amount: ''}]}));
     const handleRemoveItem = (index) => setFormState(prev => ({...prev, lineItems: prev.lineItems.filter((_, i) => i !== index)}));
@@ -45,7 +63,7 @@ const RecurringInvoicesView = ({ clients, recurringInvoices, setRecurringInvoice
     const openEditDialog = (rec) => {
         setEditingRecurring(rec);
         setFormState({
-            clientName: rec.clientName,
+            clientId: rec.clientId,
             frequency: rec.frequency,
             startDate: rec.nextDueDate,
             lineItems: rec.items,
@@ -54,42 +72,41 @@ const RecurringInvoicesView = ({ clients, recurringInvoices, setRecurringInvoice
         setIsDialogOpen(true);
     };
 
-    const handleSave = (e) => {
+    const handleSave = async (e) => {
         e.preventDefault();
         const totalAmount = formState.lineItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
+        const recurringData = {
+            clientId: formState.clientId,
+            frequency: formState.frequency,
+            nextDueDate: formState.startDate,
+            amount: totalAmount,
+            currency: formState.currency,
+            items: formState.lineItems.map(item => ({ ...item, amount: parseFloat(item.amount) || 0 }))
+        };
 
-        if (editingRecurring) {
-            const updatedRecurring = {
-                ...editingRecurring,
-                clientName: formState.clientName,
-                frequency: formState.frequency,
-                nextDueDate: formState.startDate,
-                amount: totalAmount,
-                currency: formState.currency,
-                items: formState.lineItems.map(item => ({...item, amount: parseFloat(item.amount) || 0 }))
-            };
-            setRecurringInvoices(recurringInvoices.map(r => r.id === editingRecurring.id ? updatedRecurring : r));
-
-        } else {
-            const newRecurring = {
-                id: recurringInvoices.length > 0 ? Math.max(...recurringInvoices.map(i => i.id)) + 1 : 1,
-                clientName: formState.clientName,
-                frequency: formState.frequency,
-                nextDueDate: formState.startDate,
-                amount: totalAmount,
-                currency: formState.currency,
-                items: formState.lineItems.map(item => ({...item, amount: parseFloat(item.amount) || 0 }))
-            };
-            setRecurringInvoices([newRecurring, ...recurringInvoices]);
+        try {
+            if (editingRecurring) {
+                const updated = await updateRecurringInvoice(editingRecurring.id, recurringData, idToken);
+                setRecurringInvoices(recurringInvoices.map(r => r.id === editingRecurring.id ? updated : r));
+            } else {
+                const added = await addRecurringInvoice(recurringData, idToken);
+                setRecurringInvoices([added, ...recurringInvoices]);
+            }
+            setIsDialogOpen(false);
+        } catch (error) {
+            console.error('Error saving recurring invoice:', error);
         }
-
-        setIsDialogOpen(false);
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (recurringToDelete) {
-            setRecurringInvoices(recurringInvoices.filter(r => r.id !== recurringToDelete.id));
-            setRecurringToDelete(null);
+            try {
+                await deleteRecurringInvoice(recurringToDelete.id, idToken);
+                setRecurringInvoices(recurringInvoices.filter(r => r.id !== recurringToDelete.id));
+                setRecurringToDelete(null);
+            } catch (error) {
+                console.error('Error deleting recurring invoice:', error);
+            }
         }
     };
 
@@ -136,9 +153,9 @@ const RecurringInvoicesView = ({ clients, recurringInvoices, setRecurringInvoice
                 <form onSubmit={handleSave} className="space-y-4">
                      <div className="grid grid-cols-2 gap-4">
                         <div>
-                           <Label htmlFor="clientName">Client</Label>
-                           <Select id="clientName" value={formState.clientName} onChange={handleFormStateChange}>
-                               {clients.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                           <Label htmlFor="clientId">Client</Label>
+                           <Select id="clientId" value={formState.clientId} onChange={handleFormStateChange}>
+                               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                            </Select>
                        </div>
                        <div>

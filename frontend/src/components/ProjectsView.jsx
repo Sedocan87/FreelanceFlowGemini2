@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import Card from './Card';
 import Dialog from './Dialog';
@@ -8,8 +8,13 @@ import Label from './Label';
 import Select from './Select';
 import TrashIcon from './TrashIcon';
 import { CURRENCIES } from '../utils/formatCurrency';
+import { useAuth } from '../contexts/AuthContext';
+import { getTeam, getSettings } from '../api';
 
-const ProjectsView = ({ projects, setProjects, clients, teamMembers, currencySettings, setViewingProject, isLoading }) => {
+const ProjectsView = ({ projects, setProjects, clients, setViewingProject, isLoading }) => {
+    const { idToken } = useAuth();
+    const [teamMembers, setTeamMembers] = useState([]);
+    const [settings, setSettings] = useState({ defaultCurrency: 'USD' });
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProject, setEditingProject] = useState(null);
     const [projectToDelete, setProjectToDelete] = useState(null);
@@ -18,12 +23,35 @@ const ProjectsView = ({ projects, setProjects, clients, teamMembers, currencySet
         name: '',
         client: clients.length > 0 ? clients[0].name : '',
         status: 'Planning',
-        assignedTo: teamMembers.length > 0 ? teamMembers[0].id : null,
+        assignedTo: null,
         billingType: 'Hourly',
         billingRate: 100,
         budget: 5000,
-        currency: currencySettings.default,
+        currency: 'USD',
     });
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (idToken) {
+                try {
+                    const [teamData, settingsData] = await Promise.all([
+                        getTeam(idToken),
+                        getSettings(idToken)
+                    ]);
+                    setTeamMembers(teamData);
+                    setSettings(settingsData);
+                    setFormState(prev => ({
+                        ...prev,
+                        assignedTo: teamData.length > 0 ? teamData[0].id : null,
+                        currency: settingsData.defaultCurrency || 'USD'
+                    }));
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                }
+            }
+        };
+        fetchData();
+    }, [idToken]);
 
     const teamMemberMap = teamMembers.reduce((acc, member) => {
         acc[member.id] = member.name;
@@ -40,7 +68,7 @@ const ProjectsView = ({ projects, setProjects, clients, teamMembers, currencySet
             billingType: 'Hourly',
             billingRate: 100,
             budget: 5000,
-            currency: currencySettings.default,
+            currency: settings.defaultCurrency || 'USD',
         });
         setIsDialogOpen(true);
     };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import Card from './Card';
 import Dialog from './Dialog';
@@ -7,15 +7,38 @@ import Select from './Select';
 import InvoiceDetailView from './InvoiceDetailView';
 import RecurringInvoicesView from './RecurringInvoicesView';
 import { formatCurrency, CURRENCIES } from '../utils/formatCurrency';
+import { useAuth } from '../contexts/AuthContext';
+import { getTimeEntries, getExpenses, addInvoice, updateTimeEntry, updateExpense } from '../api';
 
-const InvoicesView = ({ projects, clients, timeEntries, setTimeEntries, invoices, setInvoices, expenses, setExpenses, pdfLibrariesLoaded, userProfile, recurringInvoices, setRecurringInvoices }) => {
+const InvoicesView = ({ projects, clients, invoices, setInvoices, pdfLibrariesLoaded, userProfile }) => {
+    const { idToken } = useAuth();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedClient, setSelectedClient] = useState(clients.length > 0 ? clients[0].id : '');
     const [selectedCurrency, setSelectedCurrency] = useState('USD');
     const [viewingInvoice, setViewingInvoice] = useState(null);
     const [activeTab, setActiveTab] = useState('one-time');
+    const [timeEntries, setTimeEntries] = useState([]);
+    const [expenses, setExpenses] = useState([]);
 
-    const handleGenerateInvoice = () => {
+    useEffect(() => {
+        const fetchData = async () => {
+            if (idToken) {
+                try {
+                    const [timeData, expenseData] = await Promise.all([
+                        getTimeEntries(idToken),
+                        getExpenses(idToken)
+                    ]);
+                    setTimeEntries(timeData);
+                    setExpenses(expenseData);
+                } catch (error) {
+                    console.error('Error fetching data:', error);
+                }
+            }
+        };
+        fetchData();
+    }, [idToken]);
+
+    const handleGenerateInvoice = async () => {
         if (!selectedClient) return;
 
         const clientObj = clients.find(c => c.id === parseInt(selectedClient));
@@ -44,56 +67,64 @@ const InvoicesView = ({ projects, clients, timeEntries, setTimeEntries, invoices
 
         const timeInvoiceItems = unbilledEntries.map(entry => {
             const project = projectMap[entry.projectId];
-            const rate = project?.billing?.type === 'Hourly' ? project.billing.rate : 100; // default rate
+            const rate = project?.billing?.type === 'Hourly' ? project.billing.rate : 100;
             return {
-                id: `time-${entry.id}`,
                 description: `${project?.name || 'Project'} - ${entry.description || 'Work done'} on ${entry.date}`,
-                hours: entry.hours,
-                rate: rate
+                amount: entry.hours * rate,
             }
         });
 
         const expenseInvoiceItems = unbilledExpenses.map(expense => ({
-            id: `exp-${expense.id}`,
             description: `Expense: ${expense.description} on ${expense.date}`,
             amount: expense.amount,
         }));
 
-        const timeAmount = timeInvoiceItems.reduce((sum, item) => sum + (item.hours * item.rate), 0);
-        const expensesAmount = unbilledExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-        const totalAmount = timeAmount + expensesAmount;
+        const items = [...timeInvoiceItems, ...expenseInvoiceItems];
+        const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
 
         const newInvoice = {
-            id: `INV-${String(invoices.length + 1).padStart(3, '0')}`,
-            clientName: clientObj.name,
+            clientId: clientObj.id,
             issueDate: new Date().toISOString().split('T')[0],
             dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            amount: totalAmount,
             status: 'Draft',
             currency: selectedCurrency,
-            items: [...timeInvoiceItems, ...expenseInvoiceItems],
+            items: items,
         };
 
-        setInvoices([newInvoice, ...invoices]);
+        try {
+            const addedInvoice = await addInvoice(newInvoice, idToken);
+            setInvoices([addedInvoice, ...invoices]);
 
-        const billedEntryIds = unbilledEntries.map(entry => entry.id);
-        const updatedTimeEntries = timeEntries.map(entry =>
-            billedEntryIds.includes(entry.id) ? { ...entry, isBilled: true } : entry
-        );
-        setTimeEntries(updatedTimeEntries);
+            for (const entry of unbilledEntries) {
+                await updateTimeEntry(entry.id, { ...entry, isBilled: true }, idToken);
+            }
+            const billedEntryIds = unbilledEntries.map(entry => entry.id);
+            setTimeEntries(timeEntries.map(entry =>
+                billedEntryIds.includes(entry.id) ? { ...entry, isBilled: true } : entry
+            ));
 
-        const billedExpenseIds = unbilledExpenses.map(exp => exp.id);
-        const updatedExpenses = expenses.map(exp =>
-            billedExpenseIds.includes(exp.id) ? { ...exp, isBilled: true } : exp
-        );
-        setExpenses(updatedExpenses);
+            for (const expense of unbilledExpenses) {
+                await updateExpense(expense.id, { ...expense, isBilled: true }, idToken);
+            }
+            const billedExpenseIds = unbilledExpenses.map(exp => exp.id);
+            setExpenses(expenses.map(exp =>
+                billedExpenseIds.includes(exp.id) ? { ...exp, isBilled: true } : exp
+            ));
 
-        setIsDialogOpen(false);
+            setIsDialogOpen(false);
+        } catch (error) {
+            console.error('Error generating invoice:', error);
+        }
     };
 
-    const handleStatusChange = (invoiceId, newStatus) => {
-        setInvoices(invoices.map(inv => inv.id === invoiceId ? {...inv, status: newStatus} : inv));
-        setViewingInvoice(prev => prev ? {...prev, status: newStatus} : null);
+    const handleStatusChange = async (invoiceId, newStatus) => {
+        try {
+            const updatedInvoice = await updateInvoice(invoiceId, { status: newStatus }, idToken);
+            setInvoices(invoices.map(inv => inv.id === invoiceId ? { ...inv, status: newStatus } : inv));
+            setViewingInvoice(prev => prev ? { ...prev, status: newStatus } : null);
+        } catch (error) {
+            console.error('Error updating invoice status:', error);
+        }
     };
 
     const handleDownloadPdf = () => {
@@ -205,7 +236,7 @@ const InvoicesView = ({ projects, clients, timeEntries, setTimeEntries, invoices
             )}
 
             {activeTab === 'recurring' && (
-                <RecurringInvoicesView clients={clients} recurringInvoices={recurringInvoices} setRecurringInvoices={setRecurringInvoices} />
+                <RecurringInvoicesView clients={clients} />
             )}
 
             <Dialog isOpen={isDialogOpen} onClose={() => setIsDialogOpen(false)} title="Create New Invoice">
