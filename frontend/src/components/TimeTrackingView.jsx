@@ -5,8 +5,12 @@ import Input from './Input';
 import Label from './Label';
 import Select from './Select';
 import Textarea from './Textarea';
+import { useAuth } from '../contexts/AuthContext';
+import { getTimeEntries, addTimeEntry } from '../api';
 
-const TimeTrackingView = ({ projects, setProjects, timeEntries, setTimeEntries, user }) => {
+const TimeTrackingView = ({ projects, setProjects, user }) => {
+    const { idToken } = useAuth();
+    const [timeEntries, setTimeEntries] = useState([]);
     const [selectedProject, setSelectedProject] = useState(projects.length > 0 ? projects[0].id : '');
     const [hours, setHours] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -16,6 +20,20 @@ const TimeTrackingView = ({ projects, setProjects, timeEntries, setTimeEntries, 
     const [timerStartTime, setTimerStartTime] = useState(null);
     const [elapsedTime, setElapsedTime] = useState(0);
     const [timerProjectId, setTimerProjectId] = useState(projects.length > 0 ? projects[0].id : null);
+
+    useEffect(() => {
+        const fetchTimeEntries = async () => {
+            if (idToken) {
+                try {
+                    const data = await getTimeEntries(idToken);
+                    setTimeEntries(data);
+                } catch (error) {
+                    console.error('Error fetching time entries:', error);
+                }
+            }
+        };
+        fetchTimeEntries();
+    }, [idToken]);
 
     useEffect(() => {
         let interval = null;
@@ -52,7 +70,7 @@ const TimeTrackingView = ({ projects, setProjects, timeEntries, setTimeEntries, 
         setElapsedTime(0);
     };
 
-    const handleAddTimeEntry = (e) => {
+    const handleAddTimeEntry = async (e) => {
         e.preventDefault();
         const hoursNum = parseFloat(hours);
         if (!selectedProject || !hours || isNaN(hoursNum) || hoursNum <= 0) {
@@ -60,20 +78,23 @@ const TimeTrackingView = ({ projects, setProjects, timeEntries, setTimeEntries, 
             return;
         }
         const newEntry = {
-            id: timeEntries.length > 0 ? Math.max(...timeEntries.map(t => t.id)) + 1 : 1,
             projectId: parseInt(selectedProject),
             hours: hoursNum,
             date,
             description,
-            memberId: user.id, // Assuming current user's ID
+            memberId: user.id,
             isBilled: false,
         };
-        setTimeEntries([newEntry, ...timeEntries]);
 
-        setProjects(projects.map(p => p.id === parseInt(selectedProject) ? { ...p, tracked: p.tracked + hoursNum } : p));
-
-        setHours('');
-        setDescription('');
+        try {
+            const addedEntry = await addTimeEntry(newEntry, idToken);
+            setTimeEntries([addedEntry, ...timeEntries]);
+            setProjects(projects.map(p => p.id === parseInt(selectedProject) ? { ...p, tracked: p.tracked + hoursNum } : p));
+            setHours('');
+            setDescription('');
+        } catch (error) {
+            console.error('Error adding time entry:', error);
+        }
     };
 
     const projectMap = projects.reduce((acc, proj) => {

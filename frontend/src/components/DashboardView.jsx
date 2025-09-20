@@ -1,9 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { formatCurrency } from '../utils';
 import Card from './Card';
 import TaxEstimator from './TaxEstimator';
+import { useAuth } from '../contexts/AuthContext';
+import { getTimeEntries } from '../api';
 
-const DashboardView = ({ projects, clients, timeEntries, invoices, taxSettings, currencySettings }) => {
+const DashboardView = ({ projects, clients, invoices, taxSettings, currencySettings }) => {
+    const { idToken } = useAuth();
+    const [timeEntries, setTimeEntries] = useState([]);
+
+    useEffect(() => {
+        const fetchTimeEntries = async () => {
+            if (idToken) {
+                try {
+                    const data = await getTimeEntries(idToken);
+                    setTimeEntries(data);
+                } catch (error) {
+                    console.error('Error fetching time entries:', error);
+                }
+            }
+        };
+        fetchTimeEntries();
+    }, [idToken]);
+
     const totalProjects = projects.length;
     const totalClients = clients.length;
     const activeProjects = projects.filter(p => p.status === 'In Progress').length;
@@ -14,8 +33,8 @@ const DashboardView = ({ projects, clients, timeEntries, invoices, taxSettings, 
     }, {});
 
     const recentActivities = [
-        ...timeEntries.slice(0, 3).map(t => ({ type: 'time', data: t, date: t.date })),
-        ...invoices.slice(0, 2).map(i => ({ type: 'invoice', data: i, date: i.issueDate }))
+        ...(timeEntries || []).slice(0, 3).map(t => ({ type: 'time', data: t, date: t.date })),
+        ...(invoices || []).slice(0, 2).map(i => ({ type: 'invoice', data: i, date: i.issueDate }))
     ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
 

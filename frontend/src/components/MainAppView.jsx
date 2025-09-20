@@ -32,14 +32,7 @@ const MainAppView = ({ user, onLogout }) => {
 
     const [clients, setClients] = useState([]);
     const [projects, setProjects] = useState([]);
-    const [timeEntries, setTimeEntries] = useState([]);
     const [invoices, setInvoices] = useState([]);
-    const [expenses, setExpenses] = useState([]);
-    const [userProfile, setUserProfile] = useState({});
-    const [teamMembers, setTeamMembers] = useState([]);
-    const [recurringInvoices, setRecurringInvoices] = useState([]);
-    const [taxSettings, setTaxSettings] = useState({});
-    const [currencySettings, setCurrencySettings] = useState({});
 
     const [isLoading, setIsLoading] = useState(true);
     const [pdfLibrariesLoaded, setPdfLibrariesLoaded] = useState(false);
@@ -66,14 +59,7 @@ const MainAppView = ({ user, onLogout }) => {
             await Promise.all([
                 fetchData('projects', setProjects),
                 fetchData('clients', setClients),
-                fetchData('time-entries', setTimeEntries),
                 fetchData('invoices', setInvoices),
-                fetchData('expenses', setExpenses),
-                fetchData('profile', setUserProfile),
-                fetchData('team', setTeamMembers),
-                fetchData('recurring-invoices', setRecurringInvoices),
-                fetchData('tax-settings', setTaxSettings),
-                fetchData('currency-settings', setCurrencySettings),
             ]);
             setIsLoading(false);
         };
@@ -187,15 +173,15 @@ const MainAppView = ({ user, onLogout }) => {
         }
 
         switch (activeView) {
-            case 'dashboard': return <DashboardView projects={projects} clients={clients} timeEntries={timeEntries} invoices={invoices} taxSettings={taxSettings} currencySettings={currencySettings} />;
-            case 'projects': return <ProjectsView projects={projects} setProjects={setProjects} clients={clients} teamMembers={teamMembers} currencySettings={currencySettings} setViewingProject={handleSetViewingProject} isLoading={isLoading} />;
+            case 'dashboard': return <DashboardView projects={projects} clients={clients} invoices={invoices} />;
+            case 'projects': return <ProjectsView projects={projects} setProjects={setProjects} clients={clients} setViewingProject={handleSetViewingProject} isLoading={isLoading} />;
             case 'clients': return <ClientsView clients={clients} setClients={setClients} />;
-            case 'invoices': return <InvoicesView projects={projects} clients={clients} timeEntries={timeEntries} setTimeEntries={setTimeEntries} invoices={invoices} setInvoices={setInvoices} expenses={expenses} setExpenses={setExpenses} pdfLibrariesLoaded={pdfLibrariesLoaded} userProfile={userProfile} recurringInvoices={recurringInvoices} setRecurringInvoices={setRecurringInvoices} />;
-            case 'timetracking': return <TimeTrackingView projects={projects} setProjects={setProjects} timeEntries={timeEntries} setTimeEntries={setTimeEntries} user={user} />;
-            case 'reporting': return <ReportingView projects={projects} clients={clients} timeEntries={timeEntries} teamMembers={teamMembers} expenses={expenses} />;
-            case 'expenses': return <ExpensesView projects={projects} setExpenses={setExpenses} expenses={expenses} />;
-            case 'team': return <TeamView teamMembers={teamMembers} setTeamMembers={setTeamMembers} projects={projects} setProjects={setProjects} />;
-            case 'settings': return <SettingsView user={user} onLogout={onLogout} userProfile={userProfile} setUserProfile={setUserProfile} taxSettings={taxSettings} setTaxSettings={setTaxSettings} currencySettings={currencySettings} setCurrencySettings={setCurrencySettings} />;
+            case 'invoices': return <InvoicesView projects={projects} clients={clients} invoices={invoices} setInvoices={setInvoices} pdfLibrariesLoaded={pdfLibrariesLoaded} />;
+            case 'timetracking': return <TimeTrackingView projects={projects} setProjects={setProjects} user={user} />;
+            case 'reporting': return <ReportingView projects={projects} clients={clients} />;
+            case 'expenses': return <ExpensesView projects={projects} />;
+            case 'team': return <TeamView projects={projects} setProjects={setProjects} />;
+            case 'settings': return <SettingsView user={user} onLogout={onLogout} />;
             default: return <DashboardView projects={projects} clients={clients} />;
         }
     };

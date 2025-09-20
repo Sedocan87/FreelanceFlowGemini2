@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button';
 import Card from './Card';
 import Input from './Input';
@@ -9,60 +9,65 @@ import LogOutIcon from './LogOutIcon';
 import { CURRENCIES } from '../utils/formatCurrency';
 import { useAuth } from '../contexts/AuthContext';
 import { loadStripe } from '@stripe/stripe-js';
+import { getSettings, updateSettings } from '../api';
 
-// Load Stripe outside of the component render to avoid re-creating the object on every render
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
-const SettingsView = ({ user, onLogout, userProfile, setUserProfile, taxSettings, setTaxSettings, currencySettings, setCurrencySettings }) => {
+const SettingsView = ({ user, onLogout }) => {
     const { idToken } = useAuth();
+    const [settings, setSettings] = useState({
+        companyName: '',
+        companyEmail: '',
+        companyAddress: '',
+        logoUrl: '',
+        taxRate: 0,
+        defaultCurrency: 'USD',
+    });
     const [isEditingCompany, setIsEditingCompany] = useState(false);
-    const [companyForm, setCompanyForm] = useState(userProfile);
-    const [currentTaxRate, setCurrentTaxRate] = useState(taxSettings.rate);
-    const [currentDefaultCurrency, setCurrentDefaultCurrency] = useState(currencySettings.default);
     const [stripeError, setStripeError] = useState(null);
     const [stripeLoading, setStripeLoading] = useState(false);
 
-    const handleCompanyInfoChange = (e) => {
+    useEffect(() => {
+        const fetchSettings = async () => {
+            if (idToken) {
+                try {
+                    const data = await getSettings(idToken);
+                    setSettings(data);
+                } catch (error) {
+                    console.error('Error fetching settings:', error);
+                }
+            }
+        };
+        fetchSettings();
+    }, [idToken]);
+
+    const handleSettingsChange = (e) => {
         const { id, value } = e.target;
-        setCompanyForm(prev => ({ ...prev, [id]: value }));
+        setSettings(prev => ({ ...prev, [id]: value }));
     };
 
     const handleLogoChange = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // In a real app, you'd upload this to a server and get a URL
             const reader = new FileReader();
             reader.onloadend = () => {
-                setCompanyForm(prev => ({...prev, logo: reader.result}));
+                setSettings(prev => ({ ...prev, logoUrl: reader.result }));
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleSaveCompanyInfo = (e) => {
+    const handleSaveSettings = async (e) => {
         e.preventDefault();
-        setUserProfile(companyForm);
-        setIsEditingCompany(false);
-    };
-
-    const handleTaxRateChange = (e) => {
-        setCurrentTaxRate(e.target.value);
-    };
-
-    const handleSaveTaxSettings = (e) => {
-        e.preventDefault();
-        const rate = parseFloat(currentTaxRate);
-        if (!isNaN(rate) && rate >= 0 && rate <= 100) {
-            setTaxSettings({ rate });
-            alert("Tax settings saved.");
-        } else {
-           alert("Please enter a valid tax rate between 0 and 100.");
+        try {
+            await updateSettings(settings, idToken);
+            setIsEditingCompany(false);
+            alert("Settings saved.");
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            alert("Failed to save settings.");
         }
-    };
-
-    const handleSaveCurrencySettings = (e) => {
-        e.preventDefault();
-        setCurrencySettings({ default: currentDefaultCurrency });
-        alert("Currency settings saved.");
     };
 
     const handleUpgradeClick = async () => {
@@ -106,6 +111,57 @@ const SettingsView = ({ user, onLogout, userProfile, setUserProfile, taxSettings
             <p className="mt-1 text-gray-600 dark:text-gray-400">Manage your account and preferences.</p>
 
             <div className="mt-8 space-y-8">
+                <Card>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold text-gray-800 dark:text-white">Company Information</h3>
+                        {!isEditingCompany && <Button variant="secondary" onClick={() => setIsEditingCompany(true)}>Edit</Button>}
+                    </div>
+                    {isEditingCompany ? (
+                        <form onSubmit={handleSaveSettings}>
+                            <div className="space-y-4">
+                                <div>
+                                    <Label htmlFor="companyName">Company Name</Label>
+                                    <Input id="companyName" value={settings.companyName || ''} onChange={handleSettingsChange} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="companyEmail">Company Email</Label>
+                                    <Input id="companyEmail" type="email" value={settings.companyEmail || ''} onChange={handleSettingsChange} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="companyAddress">Company Address</Label>
+                                    <Textarea id="companyAddress" value={settings.companyAddress || ''} onChange={handleSettingsChange} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="logo">Company Logo</Label>
+                                    <Input id="logo" type="file" onChange={handleLogoChange} accept="image/*" />
+                                    {settings.logoUrl && <img src={settings.logoUrl} alt="logo" className="w-24 mt-2"/>}
+                                </div>
+                                <div>
+                                    <Label htmlFor="taxRate">Tax Rate (%)</Label>
+                                    <Input id="taxRate" type="number" step="0.01" value={settings.taxRate || 0} onChange={handleSettingsChange} />
+                                </div>
+                                <div>
+                                    <Label htmlFor="defaultCurrency">Default Currency</Label>
+                                    <Select id="defaultCurrency" value={settings.defaultCurrency || 'USD'} onChange={handleSettingsChange}>
+                                        {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                    </Select>
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-4 mt-6">
+                                <Button type="button" variant="secondary" onClick={() => setIsEditingCompany(false)}>Cancel</Button>
+                                <Button type="submit">Save Changes</Button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="space-y-2">
+                            <p><strong>Company Name:</strong> {settings.companyName}</p>
+                            <p><strong>Company Email:</strong> {settings.companyEmail}</p>
+                            <p><strong>Tax Rate:</strong> {settings.taxRate}%</p>
+                            <p><strong>Default Currency:</strong> {settings.defaultCurrency}</p>
+                        </div>
+                    )}
+                </Card>
+
                  <Card>
                     <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Subscription</h3>
                     <div className="flex justify-between items-center">
