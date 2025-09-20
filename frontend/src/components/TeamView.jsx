@@ -8,7 +8,7 @@ import Label from './Label';
 import TrashIcon from './TrashIcon';
 import { formatCurrency } from '../utils/formatCurrency';
 import { useAuth } from '../contexts/AuthContext';
-import { getTeam } from '../api';
+import { getTeam, inviteTeamMember, updateTeamMember, deleteTeamMember } from '../api';
 
 const TeamView = ({ projects, setProjects }) => {
     const { idToken } = useAuth();
@@ -19,51 +19,61 @@ const TeamView = ({ projects, setProjects }) => {
 
     const [formState, setFormState] = useState({email: '', rate: 50});
 
-    useEffect(() => {
-        const fetchTeam = async () => {
-            if (idToken) {
-                try {
-                    const data = await getTeam(idToken);
-                    setTeamMembers(data);
-                } catch (error) {
-                    console.error('Error fetching team members:', error);
-                }
+    const fetchTeam = async () => {
+        if (idToken) {
+            try {
+                const data = await getTeam(idToken);
+                setTeamMembers(data);
+            } catch (error) {
+                console.error('Error fetching team members:', error);
             }
-        };
+        }
+    };
+
+    useEffect(() => {
         fetchTeam();
     }, [idToken]);
 
-    const handleInvite = (e) => {
+    const handleInvite = async (e) => {
         e.preventDefault();
         if (formState.email) {
-            const newMember = {
-                id: teamMembers.length > 0 ? Math.max(...teamMembers.map(m => m.id)) + 1 : 1,
-                name: 'Pending Invitation',
-                email: formState.email,
-                role: 'Member',
-                rate: parseFloat(formState.rate),
-            };
-            setTeamMembers([...teamMembers, newMember]);
-            setIsInviteOpen(false);
-            setFormState({email: '', rate: 50});
+            try {
+                const newMember = await inviteTeamMember({ email: formState.email, rate: formState.rate }, idToken);
+                setTeamMembers([...teamMembers, newMember]);
+                setIsInviteOpen(false);
+                setFormState({email: '', rate: 50});
+            } catch (error) {
+                console.error('Error inviting team member:', error);
+                // You might want to show an error message to the user here
+            }
         }
     };
 
-    const handleUpdateRate = (e) => {
+    const handleUpdateRate = async (e) => {
         e.preventDefault();
         if (editingMember) {
-            setTeamMembers(teamMembers.map(m => m.id === editingMember.id ? {...m, rate: parseFloat(formState.rate)} : m));
-            setEditingMember(null);
+            try {
+                await updateTeamMember(editingMember.id, { rate: formState.rate }, idToken);
+                setTeamMembers(teamMembers.map(m => m.id === editingMember.id ? {...m, rate: parseFloat(formState.rate)} : m));
+                setEditingMember(null);
+            } catch (error) {
+                console.error('Error updating team member:', error);
+            }
         }
     };
 
-    const handleDeleteMember = () => {
+    const handleDeleteMember = async () => {
         if (memberToDelete) {
-            setTeamMembers(teamMembers.filter(m => m.id !== memberToDelete.id));
-            setProjects(projects.map(p =>
-                p.assignedTo === memberToDelete.id ? { ...p, assignedTo: null } : p
-            ));
-            setMemberToDelete(null);
+            try {
+                await deleteTeamMember(memberToDelete.id, idToken);
+                setTeamMembers(teamMembers.filter(m => m.id !== memberToDelete.id));
+                setProjects(projects.map(p =>
+                    p.assignedTo === memberToDelete.id ? { ...p, assignedTo: null } : p
+                ));
+                setMemberToDelete(null);
+            } catch (error) {
+                console.error('Error deleting team member:', error);
+            }
         }
     };
 
